@@ -32,8 +32,8 @@ print(len(clinton), len(trump))
 import json
 from watson_developer_cloud import ToneAnalyzerV3
 tone_analyzer = ToneAnalyzerV3(
-   username='5ad91819-3a78-41d2-beee-71ffda65c6e2',
-   password='VLaps78fvlQ3',
+   username='YOUR_USERNAME',
+   password='YOUR_PASSWORD',
    version='2016-05-19')
 
 #retrieve, parse clinton data + push to file
