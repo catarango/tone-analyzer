@@ -1,0 +1,52 @@
+---
+title: "Presidential Debate Tone Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Overview
+
+The following is an analysis of the Presidential Debate speeches using IBM's Tone Analyzer API from Watson Analytics, Python and R. 
+
+First, we connect to website with the transcripts of the presidential debate, and using regular expressions, mine for those words that were spoken by each candidate during the debate.
+
+```{python}
+
+import urllib.request
+URL = 'http://www.politico.com/story/2016/10/2016-presidential-debate-transcript-229519'
+
+def getWebpage(theURL):
+    response = urllib.request.urlopen(theURL)
+    html = response.read()
+    html = html.decode()
+    print("got it!")
+    f = open('debatetext.txt', 'w')
+    f.write(html)
+    f.close()
+    print("all done!")    
+    
+getWebpage(URL) 
+
+#use regular expressions to parse out clinton and trump text and join them into one string
+import re
+data = open(r'debatetext.txt','r').read()
+print(len(data))
+clinton = re.findall(r'(?<=<b>Clinton<\/b>:)(.*)(?=</p>)', data, re.MULTILINE)
+trump = re.findall(r'(?<=<b>Trump<\/b>:)(.*)(?=</p>)', data, re.MULTILINE)
+clinton = [''.join(clinton[0:len(clinton)])]
+trump = [''.join(trump[0:len(trump)])]
+print(len(clinton), len(trump))
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

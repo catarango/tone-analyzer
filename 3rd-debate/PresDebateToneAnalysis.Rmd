@@ -1,0 +1,110 @@
+---
+title: "Presidential Debate Tone Analysis"
+output: html_document
+---
+
+##Overview
+
+The following is an analysis of the Presidential Debate speeches using IBM's Tone Analyzer API from Watson Analytics, Python and R. 
+
+First, we connect to website with the transcripts of the presidential debate, and using regular expressions, mine for those words that were spoken by each candidate during the debate.
+
+```{python}
+import urllib.request
+URL = 'http://www.politico.com/story/2016/10/2016-presidential-debate-transcript-229519'
+
+def getWebpage(theURL):
+    response = urllib.request.urlopen(theURL)
+    html = response.read()
+    html = html.decode()
+    print("got it!")
+    f = open('debatetext.txt', 'w')
+    f.write(html)
+    f.close()
+    print("all done!")    
+    
+getWebpage(URL) 
+
+#use regular expressions to parse out clinton and trump text and join them into one string
+
+import re
+data = open(r'debatetext.txt','r').read()
+print(len(data))
+clinton = re.findall(r'(?<=<b>Clinton<\/b>:)(.*)(?=</p>)', data, re.MULTILINE)
+trump = re.findall(r'(?<=<b>Trump<\/b>:)(.*)(?=</p>)', data, re.MULTILINE)
+clinton = [''.join(clinton[0:len(clinton)])]
+trump = [''.join(trump[0:len(trump)])]
+print(len(clinton), len(trump))
+```
+
+## Connecting to the IBM API
+
+In order to complete the following step and actually connect to the IBM API, you have to sign up for IBM Bluemix (there is a free tier), and go to the Watson section. One you've registered, you'll be able to access your credentials and replace the username and password below.
+
+```{python}
+import json
+from watson_developer_cloud import ToneAnalyzerV3
+tone_analyzer = ToneAnalyzerV3(
+   username='YOUR_USERNAME',
+   password='YOUR_PASSWORD',
+   version='2016-05-19')
+```
+
+## Retrieving the tone analysis and putting it in a 'pretty' csv format for R.
+
+I did this for each candidate, but if you're analyzing more than a couple people, you may want to create a function and call it. 
+
+```{python}
+#retrieve, parse clinton data + push to file
+clinton = json.dumps(tone_analyzer.tone(text= clinton[0]), indent=2)
+clinton_parsed = (json.loads(clinton)['document_tone']) #just keeps document tone, no sentences
+for x in clinton_parsed['tone_categories']:
+    for y in x['tones']:
+        print(y['tone_name'], y['score'])
+        tone= ((y['tone_name'],',', str(y['score'])))
+        f = open('clintontone.csv','a')
+        f.write((''.join(tone))+'\n')
+        f.close()
+#retrieve, parse trump data + push to file        
+trump = json.dumps(tone_analyzer.tone(text= trump[0]), indent=2)
+trump_parsed = (json.loads(trump)['document_tone']) #just keeps document tone, no sentences
+for x in trump_parsed['tone_categories']:
+    for y in x['tones']:
+        print(y['tone_name'], y['score'])
+        tone= ((y['tone_name'],',', str(y['score'])))
+        f = open('trumptone.csv','a')
+        f.write((''.join(tone))+'\n')
+        f.close()           
+```
+
+#Manipulating data in R and plotting!
+Here is where we open up our data in R and plot it using the plotly package. 
+
+```{r}
+#load all necessary libraries
+library(plotly)
+
+#create data frames of tone analysis
+clinton <- read.csv("clintontone.csv", header = FALSE)
+trump <- read.csv("trumptone.csv", header = FALSE)
+
+#give the data frames headers
+colnames(clinton) <- c('tone','clinton' )
+colnames(trump) <- c('tone', 'trump')
+
+#merge the data
+ctone <- merge(clinton, trump, by='tone')
+
+
+#plot the data
+plot_ly(ctone, x = ~tone, y = ~clinton, type = 'bar', name = 'Clinton', marker=list(color='rbg(0,0,255)')) %>%
+    add_trace(y = ~trump, name = 'Trump', marker=list(color='rbg(255,0,0)')) %>%
+    layout(title = 'Candidate Tone in 2nd Debate',
+        xaxis = list(title = ''),   
+        yaxis = list(title = '% in Speech'), 
+        legend  = list(x = 1, y =1),
+        barmode = 'group', bargap = .15)
+```
+
+#Voila!
+I published my graph on RPubs, but you can do whatever you need by just exporting the graph to the appropriate format. 
